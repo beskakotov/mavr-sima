@@ -1,6 +1,11 @@
+from ctypes.wintypes import INT
+from enum import unique
+from msilib.schema import CustomAction
+from re import T
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import ARRAY, JSON, INTEGER, SMALLINT, VARCHAR, TEXT, NUMERIC, TIME, BOOLEAN
+from sqlalchemy.orm import relation
 
 Base = declarative_base()
 
@@ -16,10 +21,10 @@ class Program(Base):
     size1 = Column(NUMERIC(3, 1), default=9)
     size2 = Column(NUMERIC(3, 1), default=7)
     size3 = Column(NUMERIC(3, 1), default=5)
-    def_obs_period = Column(NUMERIC(3, 1), default=12)
+    period = Column(NUMERIC(3, 1), default=12)
 
     def as_list(self):
-        return (self.ID, self.name, self.author, self.marker, self.size1, self.size2, self.size3, self.def_obs_period)
+        return (self.ID, self.name, self.author, self.marker, self.size1, self.size2, self.size3, self.period)
 
     def __str__(self):
         return f"[{self.ID:02d}] {self.name} ({self.author}) '{self.marker}'"
@@ -30,22 +35,23 @@ class Program(Base):
     def __str__(self):
         return f"{self.ID} | {self.author} | {self.name}"
 
-class ObservationObject(Base):  
+class ObjectType(Base):
+    __tablename__ = 'object_types'
+    ID = Column(INTEGER, primary_key=True, index=True, unique=True)
+    tablename = Column(VARCHAR(32), nullable=False)
+
+class ObservationObject(Base):
     __tablename__ = 'objects'
     ID = Column(INTEGER, primary_key=True, index=True, unique=True)
-
+    
     _Program = Column(INTEGER, ForeignKey('programs.ID'), default=1, index=True)
-    type = Column(VARCHAR(1), index=True)
+    _ObjectType = Column(INTEGER, ForeignKey('object_types.ID'), default=1)
 
+    _LinkID = Column(INTEGER, index=True, nullable=False)
+
+class BaseObject:
     main_id = Column(VARCHAR(32), nullable=False, index=True)
     name_list = Column(ARRAY(VARCHAR(32)), nullable=False)
-
-    ra_2000 = Column(VARCHAR(16))
-    dec_2000 = Column(VARCHAR(16))
-    ra_2000_f = Column(NUMERIC(9, 6), nullable=True, index=True)
-    dec_2000_f = Column(NUMERIC(10, 6), nullable=True, index=True)
-    ra_pm = Column(NUMERIC(8, 3), nullable=True, default=None)
-    dec_pm = Column(NUMERIC(8, 3), nullable=True, default=None)
 
     gmag = Column(NUMERIC(4, 2), nullable=True, default=None)
     bmag = Column(NUMERIC(4, 2), nullable=True, default=None)
@@ -56,38 +62,48 @@ class ObservationObject(Base):
     hmag = Column(NUMERIC(4, 2), nullable=True, default=None)
     kmag = Column(NUMERIC(4, 2), nullable=True, default=None)
 
-    sptype = Column(VARCHAR(32), nullable=True, default=None)
-    parallax = Column(NUMERIC(7, 4), nullable=True, default=None)
     period = Column(NUMERIC(7, 4), nullable=True, default=None)
 
     status = Column(BOOLEAN, index=True)
-
-    describe = Column(TEXT, nullable=True)
+    description = Column(TEXT, nullable=True)
 
     posN = Column(SMALLINT, default=0)
     orbN = Column(SMALLINT, default=0)
-    
-    def as_list(self):
-        return (self.ID, self._Program, self.t, self.main_name, self.ra_2000, self.dec_2000, self.ra_pm, self.dec_pm,
-        self.gmag, self.bmag, self.vmag, self.rmag, self.imag, self.jmag, self.hmag,
-        self.sptype, self.parallax, self.period, self.status, self.posN, self.orbN)
-    
-    # def return_radeg(self):
-    #     ra_txt = self.ra_2000
-    #     ra_h, ra_m, ra_s = ra_txt.split()
-    #     radeg = 15*(float(ra_h) + float(ra_m)/60 + float(ra_s)/3600)
-    #     return radeg
 
-    # def return_decdeg(self):
-    #     dec_txt = self.dec_2000
-    #     dec_d, dec_m, dec_s = dec_txt.split()
-    #     decdeg = (-1 if float(dec_d) < 0 else 1) * (abs(float(dec_d)) + float(dec_m) / 60 + float(dec_s) / 3600)
-    #     return decdeg
+class StaticObject(BaseObject):
+    ra_2000 = Column(VARCHAR(16))
+    dec_2000 = Column(VARCHAR(16))
+    ra_2000_f = Column(NUMERIC(9, 6), nullable=True, index=True)
+    dec_2000_f = Column(NUMERIC(10, 6), nullable=True, index=True)
+    ra_pm = Column(NUMERIC(8, 3), nullable=True, default=None)
+    dec_pm = Column(NUMERIC(8, 3), nullable=True, default=None)
+    sptype = Column(VARCHAR(32), nullable=True, default=None)
+    parallax = Column(NUMERIC(7, 4), nullable=True, default=None)
     
-    def update_counters(self, session):
-        self.posN = session.query(PositionParameter).filter(PositionParameter._Object == self.ID).count()
-        self.orbN = session.query(Orbit).filter(Orbit._Object == self.ID).count()
+class DynamicObject(BaseObject):
+    pass
 
+class CustomObject(Base, StaticObject):
+    __tablename__ = 'custom_objects'
+    ID = Column(INTEGER, primary_key=True, index=True, unique=True)
+    _Object = Column(INTEGER, ForeignKey('objects.ID'), index=True, nullable=False, default=None, unique=True)
+
+class SimbadObject(Base, StaticObject):
+    __tablename__ = 'sambad_objects'
+    ID = Column(INTEGER, primary_key=True, index=True, unique=True)
+    _Object = Column(INTEGER, ForeignKey('objects.ID'), index=True, nullable=False, default=None, unique=True)
+
+class VizierObject(Base, StaticObject):
+    __tablename__ = 'sambad_objects'
+    ID = Column(INTEGER, primary_key=True, index=True, unique=True)
+    _Object = Column(INTEGER, ForeignKey('objects.ID'), index=True, nullable=False, default=None, unique=True)
+
+class HorizonObject(Base, DynamicObject):
+    __tablename__ = 'horizon_objects'
+    ID = Column(INTEGER, primary_key=True, index=True, unique=True)
+    _Object = Column(INTEGER, ForeignKey('objects.ID'), index=True, nullable=False, default=None, unique=True)
+
+    
 class Orbit(Base):
     __tablename__ = 'orbits'
 
@@ -205,3 +221,21 @@ class AccessLevel(Base):
     login = Column(VARCHAR(16), index=True)
     password = Column(VARCHAR(32))
     level = Column(SMALLINT)
+
+class ObjectByType:
+    object_dict = {
+        'custom_objects': CustomObject,
+        'simbad_objects': SimbadObject,
+        'vizier_objects': VizierObject,
+        'horizon_objects': HorizonObject,
+    }
+
+    @classmethod
+    def get_by_tablename(cls, tablename):
+        return cls.object_dict(tablename)
+    
+    @classmethod
+    def get_by_id(cls, object_type_id):
+        from connection import Connection
+        Connection.getSession().query(ObjectType).filter(ObjectType.ID == object_type_id)
+    

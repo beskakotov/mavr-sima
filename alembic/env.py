@@ -4,7 +4,7 @@ from getpass import getpass
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
-from ums.sima import Connection as Conn
+from sima import Connection as Conn
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -28,7 +28,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from ums import sima
+import sima
 target_metadata = sima.Base.metadata
 
 # other values from the config, defined by the needs of env.py,
