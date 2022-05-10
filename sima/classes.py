@@ -43,15 +43,38 @@ class ObjectType(Base):
 class ObservationObject(Base):
     __tablename__ = 'objects'
     ID = Column(INTEGER, primary_key=True, index=True, unique=True)
-    
+
     _Program = Column(INTEGER, ForeignKey('programs.ID'), default=1, index=True)
-    _ObjectType = Column(INTEGER, ForeignKey('object_types.ID'), default=1)
 
-    _LinkID = Column(INTEGER, index=True, nullable=False)
+    main_name = Column(VARCHAR(64), nullable=False, index=True)
+    name_list = Column(ARRAY(VARCHAR(64)), nullable=False)
+   
+    period = Column(NUMERIC(7, 4), nullable=True, default=None)
 
-class BaseObject:
-    main_id = Column(VARCHAR(32), nullable=False, index=True)
-    name_list = Column(ARRAY(VARCHAR(32)), nullable=False)
+    status = Column(BOOLEAN, index=True)
+    description = Column(TEXT, nullable=True)
+    
+    obsN = Column(SMALLINT, default=0)
+    posN = Column(SMALLINT, default=0)
+    orbN = Column(SMALLINT, default=0)
+
+class StaticObject(ObservationObject):
+    ra_2000 = Column(VARCHAR(16))
+    dec_2000 = Column(VARCHAR(16))
+    ra_2000_f = Column(NUMERIC(9, 6), nullable=True, index=True)
+    dec_2000_f = Column(NUMERIC(10, 6), nullable=True, index=True)
+    
+    
+    
+class DynamicObject(ObservationObject):
+    pass
+
+class CustomObject(StaticObject):
+    pass
+
+class SimbadObject(StaticObject):
+    ra_pm = Column(NUMERIC(8, 3), nullable=True, default=None)
+    dec_pm = Column(NUMERIC(8, 3), nullable=True, default=None)
 
     gmag = Column(NUMERIC(4, 2), nullable=True, default=None)
     bmag = Column(NUMERIC(4, 2), nullable=True, default=None)
@@ -62,47 +85,15 @@ class BaseObject:
     hmag = Column(NUMERIC(4, 2), nullable=True, default=None)
     kmag = Column(NUMERIC(4, 2), nullable=True, default=None)
 
-    period = Column(NUMERIC(7, 4), nullable=True, default=None)
-
-    status = Column(BOOLEAN, index=True)
-    description = Column(TEXT, nullable=True)
-
-    posN = Column(SMALLINT, default=0)
-    orbN = Column(SMALLINT, default=0)
-
-class StaticObject(BaseObject):
-    ra_2000 = Column(VARCHAR(16))
-    dec_2000 = Column(VARCHAR(16))
-    ra_2000_f = Column(NUMERIC(9, 6), nullable=True, index=True)
-    dec_2000_f = Column(NUMERIC(10, 6), nullable=True, index=True)
-    ra_pm = Column(NUMERIC(8, 3), nullable=True, default=None)
-    dec_pm = Column(NUMERIC(8, 3), nullable=True, default=None)
     sptype = Column(VARCHAR(32), nullable=True, default=None)
     parallax = Column(NUMERIC(7, 4), nullable=True, default=None)
-    
-class DynamicObject(BaseObject):
+
+
+class VizierObject(StaticObject):
     pass
 
-class CustomObject(Base, StaticObject):
-    __tablename__ = 'custom_objects'
-    ID = Column(INTEGER, primary_key=True, index=True, unique=True)
-    _Object = Column(INTEGER, ForeignKey('objects.ID'), index=True, nullable=False, default=None, unique=True)
-
-class SimbadObject(Base, StaticObject):
-    __tablename__ = 'sambad_objects'
-    ID = Column(INTEGER, primary_key=True, index=True, unique=True)
-    _Object = Column(INTEGER, ForeignKey('objects.ID'), index=True, nullable=False, default=None, unique=True)
-
-class VizierObject(Base, StaticObject):
-    __tablename__ = 'sambad_objects'
-    ID = Column(INTEGER, primary_key=True, index=True, unique=True)
-    _Object = Column(INTEGER, ForeignKey('objects.ID'), index=True, nullable=False, default=None, unique=True)
-
-class HorizonObject(Base, DynamicObject):
-    __tablename__ = 'horizon_objects'
-    ID = Column(INTEGER, primary_key=True, index=True, unique=True)
-    _Object = Column(INTEGER, ForeignKey('objects.ID'), index=True, nullable=False, default=None, unique=True)
-
+class HorizonObject(DynamicObject):
+    pass
     
 class Orbit(Base):
     __tablename__ = 'orbits'
